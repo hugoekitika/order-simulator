@@ -6,6 +6,7 @@ if (document.getElementById("grid-selector")) {
 
   let selectedRows = 0;
   let selectedCols = 0;
+  let locked = false;
 
   const size = 10; // dimensione massima griglia visiva
   const cells = [];
@@ -18,11 +19,23 @@ if (document.getElementById("grid-selector")) {
       grid.appendChild(cell);
       cells.push({ element: cell, r, c });
 
+      // evidenzia durante il passaggio del mouse
       cell.addEventListener("mouseover", () => {
-        selectedRows = r + 1;
-        selectedCols = c + 1;
-        highlightGrid(selectedRows, selectedCols);
-        selectionText.textContent = `Righe: ${selectedRows} × Colonne: ${selectedCols}`;
+        if (!locked) {
+          selectedRows = r + 1;
+          selectedCols = c + 1;
+          highlightGrid(selectedRows, selectedCols);
+          selectionText.textContent = `Righe: ${selectedRows} × Colonne: ${selectedCols}`;
+        }
+      });
+
+      // blocca o sblocca la selezione con click
+      cell.addEventListener("click", () => {
+        if (!locked) {
+          locked = true;
+        } else {
+          locked = false;
+        }
       });
     }
   }
@@ -52,22 +65,37 @@ if (document.getElementById("table-container")) {
   const reloadBtn = document.getElementById("reload");
 
   const table = document.createElement("table");
-  const fixedCells = new Set();
+  const fixedCells = new Map();
+
+  function generateUniqueNumbers(total) {
+    const numbers = Array.from({ length: total }, (_, i) => i + 1);
+    for (let i = numbers.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
+    }
+    return numbers;
+  }
 
   function generateTable() {
     table.innerHTML = "";
+    const total = rows * cols;
+    const numbers = generateUniqueNumbers(total);
+    let index = 0;
+
     for (let r = 0; r < rows; r++) {
       const tr = document.createElement("tr");
       for (let c = 0; c < cols; c++) {
         const td = document.createElement("td");
         const key = `${r},${c}`;
-        if (!fixedCells.has(key)) {
-          td.textContent = Math.floor(Math.random() * 12) + 1;
-        } else {
+
+        if (fixedCells.has(key)) {
+          td.textContent = fixedCells.get(key);
           td.classList.add("fixed");
           td.contentEditable = "true";
-          td.textContent = fixedCells.get(key);
+        } else {
+          td.textContent = numbers[index++];
         }
+
         td.addEventListener("click", () => toggleFix(td, r, c));
         tr.appendChild(td);
       }
@@ -83,11 +111,9 @@ if (document.getElementById("table-container")) {
       fixedCells.delete(key);
       td.classList.remove("fixed");
     } else {
-      const value = td.textContent.trim();
-      fixedCells.add(key);
+      fixedCells.set(key, td.textContent.trim());
       td.classList.add("fixed");
       td.contentEditable = "true";
-      fixedCells[key] = value;
     }
   }
 
