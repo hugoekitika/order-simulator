@@ -31,11 +31,7 @@ if (document.getElementById("grid-selector")) {
 
       // blocca o sblocca la selezione con click
       cell.addEventListener("click", () => {
-        if (!locked) {
-          locked = true;
-        } else {
-          locked = false;
-        }
+        locked = !locked;
       });
     }
   }
@@ -59,28 +55,49 @@ if (document.getElementById("grid-selector")) {
 
 // =============== PROGRAM PAGE =================
 if (document.getElementById("table-container")) {
-  const rows = parseInt(localStorage.getItem("rows"));
-  const cols = parseInt(localStorage.getItem("cols"));
+  const rows = parseInt(localStorage.getItem("rows"), 10) || 0;
+  const cols = parseInt(localStorage.getItem("cols"), 10) || 0;
   const container = document.getElementById("table-container");
   const reloadBtn = document.getElementById("reload");
-
   const table = document.createElement("table");
+
+  // Map key -> integer value (es. "0,1" -> 5)
   const fixedCells = new Map();
 
-  function generateUniqueNumbers(total) {
-    const numbers = Array.from({ length: total }, (_, i) => i + 1);
-    for (let i = numbers.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
+  // Genera array 1..total esclusi i numeri fissati
+  function generateUniquePool(total, excludedSet) {
+    const pool = [];
+    for (let i = 1; i <= total; i++) {
+      if (!excludedSet.has(i)) pool.push(i);
     }
-    return numbers;
+    // Fisher-Yates shuffle
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    return pool;
   }
 
+  // Crea la tabella, assegnando i numeri unici esclusi quelli fissati
   function generateTable() {
     table.innerHTML = "";
     const total = rows * cols;
-    const numbers = generateUniqueNumbers(total);
-    let index = 0;
+
+    // build set dei numeri già fissati
+    const fixedNumbers = new Set(Array.from(fixedCells.values()).map(v => Number(v)));
+
+    // se per errore un numero fissato è fuori range -> lo rimuoviamo
+    for (const [k, v] of fixedCells.entries()) {
+      const num = Number(v);
+      if (!Number.isInteger(num) || num < 1 || num > total) {
+        fixedCells.delete(k);
+        fixedNumbers.delete(num);
+      }
+    }
+
+    // crea pool di numeri disponibili (1..total esclusi quelli fissati)
+    const pool = generateUniquePool(total, fixedNumbers);
+    let poolIndex = 0;
 
     for (let r = 0; r < rows; r++) {
       const tr = document.createElement("tr");
@@ -89,35 +106,114 @@ if (document.getElementById("table-container")) {
         const key = `${r},${c}`;
 
         if (fixedCells.has(key)) {
-          td.textContent = fixedCells.get(key);
+          // usa il valore fissato
+          const v = fixedCells.get(key);
+          td.textContent = String(v);
           td.classList.add("fixed");
           td.contentEditable = "true";
+          td.dataset.prev = String(v); // valore precedente per eventuale rollback
         } else {
-          td.textContent = numbers[index++];
+          // assegna next numero disponibile dal pool
+          if (poolIndex < pool.length) {
+            td.textContent = String(pool[poolIndex++]);
+          } else {
+            // caso limite: non ci sono numeri disponibili (dovrebbe essere impossibile
+            // se la logica di esclusione è corretta). In tal caso scriviamo 0.
+            td.textContent = "0";
+          }
+          td.contentEditable = "false";
         }
 
+        // click per fissare/sbloccare
         td.addEventListener("click", () => toggleFix(td, r, c));
+
+        // quando una cella fissata viene modificata manualmente -> validate on blur
+        td.addEventListener("blur", () => {
+          if (td.classList.contains("fixed")) {
+            handleFixedEditBlur(td, key, total);
+          }
+        });
+
         tr.appendChild(td);
       }
       table.appendChild(tr);
     }
+
     container.innerHTML = "";
     container.appendChild(table);
   }
 
+  // Tentativo di fissare/sbloccare cella
   function toggleFix(td, r, c) {
     const key = `${r},${c}`;
+    const total = rows * cols;
+
     if (fixedCells.has(key)) {
+      // sblocca
       fixedCells.delete(key);
       td.classList.remove("fixed");
+      td.contentEditable = "false";
+      td.removeAttribute("data-prev");
+      // rigenera per riordinare senza il fisso
+      generateTable();
     } else {
-      fixedCells.set(key, td.textContent.trim());
+      // prova a fissare: valida valore corrente
+      const raw = td.textContent.trim();
+      const val = Number(raw);
+
+      if (!Number.isInteger(val) || val < 1 || val > total) {
+        alert(`Per fissare inserisci un numero intero valido tra 1 e ${total}.`);
+        return;
+      }
+
+      // evita duplicati con altri fissati
+      const fixedNumbers = new Set(Array.from(fixedCells.values()).map(v => Number(v)));
+      if (fixedNumbers.has(val)) {
+        alert(`Il numero ${val} è già fissato in un'altra casella. Scegline un altro.`);
+        return;
+      }
+
+      fixedCells.set(key, val);
       td.classList.add("fixed");
       td.contentEditable = "true";
+      td.dataset.prev = String(val);
+      // rigenera per rimuovere il numero fissato dal pool
+      generateTable();
     }
   }
 
+  // Gestisce l'evento blur su una cella fissata (modifica manuale)
+  function handleFixedEditBlur(td, key, total) {
+    const raw = td.textContent.trim();
+    const newVal = Number(raw);
+    const prevVal = td.dataset.prev ? Number(td.dataset.prev) : null;
+
+    if (!Number.isInteger(newVal) || newVal < 1 || newVal > total) {
+      alert(`Valore non valido. Deve essere un intero tra 1 e ${total}. Cambio annullato.`);
+      // rollback
+      td.textContent = String(prevVal !== null ? prevVal : "");
+      return;
+    }
+
+    // controlla duplicati: gli altri fissati non devono contenere newVal
+    for (const [k, v] of fixedCells.entries()) {
+      if (k !== key && Number(v) === newVal) {
+        alert(`Il numero ${newVal} è già fissato in un'altra casella. Cambio annullato.`);
+        td.textContent = String(prevVal !== null ? prevVal : "");
+        return;
+      }
+    }
+
+    // aggiornamento accettato
+    fixedCells.set(key, newVal);
+    td.dataset.prev = String(newVal);
+    // rigenera per aggiornare pool e posizioni
+    generateTable();
+  }
+
+  // Bottone reload rigenera solo le celle non fissate (pool esclude fissati)
   reloadBtn.addEventListener("click", generateTable);
 
+  // generazione iniziale
   generateTable();
 }
