@@ -1,0 +1,50 @@
+body {
+  font-family: Arial, sans-serif;
+  text-align: center;
+  background: #f8f8f8;
+  margin: 0;
+  padding: 0;
+}
+
+.container {
+  margin-top: 50px;
+}
+
+#grid-selector {
+  display: grid;
+  grid-template-columns: repeat(10, 30px);
+  grid-template-rows: repeat(10, 30px);
+  justify-content: center;
+  gap: 3px;
+  margin: 20px auto;
+}
+
+.cell {
+  width: 30px;
+  height: 30px;
+  background-color: #e0e0e0;
+  border: 1px solid #ccc;
+  cursor: pointer;
+}
+
+.cell.active {
+  background-color: #4caf50;
+}
+
+table {
+  border-collapse: collapse;
+  margin: 20px auto;
+}
+
+td {
+  width: 60px;
+  height: 60px;
+  text-align: center;
+  border: 1px solid #555;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+td.fixed {
+  background-color: #ffd54f;
+}
