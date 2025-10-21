@@ -7,24 +7,35 @@ body {
 }
 
 .container {
-  margin-top: 30px;
+  margin-top: 50px;
 }
 
-.main-content {
-  display: flex;
+#grid-selector {
+  display: grid;
+  grid-template-columns: repeat(10, 30px);
+  grid-template-rows: repeat(10, 30px);
   justify-content: center;
-  gap: 40px;
-  flex-wrap: wrap;
+  gap: 3px;
+  margin: 20px auto;
 }
 
-#table-container {
-  flex-shrink: 0;
+.cell {
+  width: 30px;
+  height: 30px;
+  background-color: #e0e0e0;
+  border: 1px solid #ccc;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.cell.active {
+  background-color: #4caf50;
 }
 
 table {
   border-collapse: separate;
-  border-spacing: 8px; 
-  margin: 0 auto;
+  border-spacing: 8px; /* Celle distanziate */
+  margin: 20px auto;
 }
 
 td {
@@ -48,45 +59,4 @@ td:hover {
 td.fixed {
   background-color: #ffd54f;
   box-shadow: inset 0 0 5px #c49a00;
-}
-
-#notepad {
-  width: 200px;
-  text-align: left;
-  background: #fff8dc;
-  padding: 10px;
-  border-radius: 8px;
-  box-shadow: 2px 2px 8px rgba(0,0,0,0.2);
-  max-height: 500px;
-  overflow-y: auto;
-}
-
-#note-entries input {
-  width: 100%;
-  margin-bottom: 4px;
-  padding: 4px;
-  font-size: 14px;
-  box-sizing: border-box;
-}
-
-.buttons {
-  margin-top: 20px;
-  display: flex;
-  justify-content: center;
-  gap: 15px;
-}
-
-button {
-  padding: 8px 16px;
-  font-size: 16px;
-  cursor: pointer;
-  border-radius: 6px;
-  border: 1px solid #555;
-  background-color: #4caf50;
-  color: white;
-  transition: background 0.2s;
-}
-
-button:hover {
-  background-color: #45a049;
 }
