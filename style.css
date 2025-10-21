@@ -79,8 +79,8 @@ td.fixed-edit {
   display: flex;
   gap: 20px;
   align-items: flex-start;
-  /* assicurarsi che il contenuto occupi lo spazio correttamente */
-  justify-content: center;
+  /* occupa tutta la larghezza disponibile */
+  justify-content: space-between;
 }
 
 /* Blocco note (sidebar sinistra) */
@@ -101,8 +101,14 @@ td.fixed-edit {
 }
 
 #notepad h2 {
-  margin: 0 0 8px 0;
+  margin: 0 0 6px 0;
   font-size: 1.05rem;
+}
+
+.notepad-subtitle {
+  margin: 0 0 10px 0;
+  font-size: 0.92rem;
+  color: #444;
 }
 
 #note-entries {
@@ -151,16 +157,39 @@ td.fixed-edit {
 #table-container {
   flex: 1;
   overflow: auto;
+  padding: 6px;
+}
+
+/* Istruzioni a destra */
+#instructions {
+  width: 260px;
+  min-width: 200px;
+  max-height: 75vh;
+  overflow: auto;
+  border: 1px solid #e6e6e6;
+  padding: 12px;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  text-align: left;
+  flex-shrink: 0;
+}
+
+#instructions h3 {
+  margin-top: 0;
 }
 
 /* Responsive: impila su schermi piccoli */
-@media (max-width: 720px) {
+@media (max-width: 920px) {
   .main-content {
     flex-direction: column;
   }
-  #notepad {
+  #notepad, #instructions {
     position: static;
     max-height: none;
+    width: 100%;
+  }
+  #table-container {
     width: 100%;
   }
 }
