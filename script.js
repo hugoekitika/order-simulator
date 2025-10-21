@@ -110,8 +110,9 @@ if (document.getElementById("table-container")) {
           const v = fixedCells.get(key);
           td.textContent = String(v);
           td.classList.add("fixed");
-          td.contentEditable = "true";
+          td.contentEditable = "false"; // fixed by default not editable until user toggles edit mode
           td.dataset.prev = String(v); // valore precedente per eventuale rollback
+          td.dataset.state = 'fixed';
         } else {
           // assegna next numero disponibile dal pool
           if (poolIndex < pool.length) {
@@ -124,12 +125,13 @@ if (document.getElementById("table-container")) {
           td.contentEditable = "false";
         }
 
-        // click per fissare/sbloccare
-        td.addEventListener("click", () => toggleFix(td, r, c));
+        // click per ciclare gli stati: free -> fixed -> fixed-edit -> free
+        td.addEventListener("click", () => cycleFix(td, r, c));
 
         // quando una cella fissata viene modificata manualmente -> validate on blur
         td.addEventListener("blur", () => {
-          if (td.classList.contains("fixed")) {
+          // validate only if in edit mode
+          if (td.dataset.state === 'fixed-edit') {
             handleFixedEditBlur(td, key, total);
           }
         });
@@ -143,20 +145,13 @@ if (document.getElementById("table-container")) {
     container.appendChild(table);
   }
 
-  // Tentativo di fissare/sbloccare cella
-  function toggleFix(td, r, c) {
+  // Ciclo di stato per la cella: free -> fixed -> fixed-edit -> free
+  function cycleFix(td, r, c) {
     const key = `${r},${c}`;
     const total = rows * cols;
+    const state = td.dataset.state || 'free';
 
-    if (fixedCells.has(key)) {
-      // sblocca
-      fixedCells.delete(key);
-      td.classList.remove("fixed");
-      td.contentEditable = "false";
-      td.removeAttribute("data-prev");
-      // rigenera per riordinare senza il fisso
-      generateTable();
-    } else {
+    if (state === 'free') {
       // prova a fissare: valida valore corrente
       const raw = td.textContent.trim();
       const val = Number(raw);
@@ -175,10 +170,33 @@ if (document.getElementById("table-container")) {
 
       fixedCells.set(key, val);
       td.classList.add("fixed");
-      td.contentEditable = "true";
+      td.contentEditable = "false"; // locked by default
       td.dataset.prev = String(val);
-      // rigenera per rimuovere il numero fissato dal pool
-      generateTable();
+      td.dataset.state = 'fixed';
+      // Non rigenerare la tabella qui: aggiorneremo le celle solo quando l'utente clicca 'Genera di nuovo'
+
+    } else if (state === 'fixed') {
+      // passa alla modalità edit per permettere la modifica manuale
+      td.dataset.state = 'fixed-edit';
+      td.classList.add('fixed-edit');
+      td.contentEditable = 'true';
+      // posizioniamo il cursore alla fine
+      const range = document.createRange();
+      const sel = window.getSelection();
+      range.selectNodeContents(td);
+      range.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      td.focus();
+
+    } else if (state === 'fixed-edit') {
+      // terzo click: sblocca la casella
+      fixedCells.delete(key);
+      td.classList.remove('fixed', 'fixed-edit');
+      td.contentEditable = 'false';
+      delete td.dataset.prev;
+      delete td.dataset.state;
+      // Non rigenerare ora
     }
   }
 
@@ -192,6 +210,10 @@ if (document.getElementById("table-container")) {
       alert(`Valore non valido. Deve essere un intero tra 1 e ${total}. Cambio annullato.`);
       // rollback
       td.textContent = String(prevVal !== null ? prevVal : "");
+      // torna alla modalità fixed (non-edit)
+      td.dataset.state = 'fixed';
+      td.classList.remove('fixed-edit');
+      td.contentEditable = 'false';
       return;
     }
 
@@ -200,6 +222,9 @@ if (document.getElementById("table-container")) {
       if (k !== key && Number(v) === newVal) {
         alert(`Il numero ${newVal} è già fissato in un'altra casella. Cambio annullato.`);
         td.textContent = String(prevVal !== null ? prevVal : "");
+        td.dataset.state = 'fixed';
+        td.classList.remove('fixed-edit');
+        td.contentEditable = 'false';
         return;
       }
     }
@@ -207,8 +232,11 @@ if (document.getElementById("table-container")) {
     // aggiornamento accettato
     fixedCells.set(key, newVal);
     td.dataset.prev = String(newVal);
-    // rigenera per aggiornare pool e posizioni
-    generateTable();
+    // Non rigenerare qui: generateTable verrà chiamata solo quando l'utente clicca su 'Genera di nuovo'
+    // Manteniamo la cella in stato 'fixed' non-edit
+    td.dataset.state = 'fixed';
+    td.classList.remove('fixed-edit');
+    td.contentEditable = 'false';
   }
 
   // Bottone reload rigenera solo le celle non fissate (pool esclude fissati)
