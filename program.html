@@ -11,12 +11,16 @@
     <h1>Tabella Generata</h1>
 
     <div class="main-content">
-      <div id="table-container"></div>
-
+      <!-- Blocco note posizionato prima del contenitore tabella in modo che sia visualizzato a sinistra -->
       <div id="notepad">
         <h2>Blocco Note</h2>
-        <div id="note-entries"></div>
+        <div id="note-entries" aria-live="polite"></div>
+        <p class="notepad-hint">
+          Modifica il testo accanto ai numeri. Le modifiche vengono applicate alle caselle corrispondenti nella tabella.
+        </p>
       </div>
+
+      <div id="table-container"></div>
     </div>
 
     <div class="buttons">
@@ -26,5 +30,89 @@
   </div>
 
   <script src="script.js"></script>
+
+  <!-- Script che mantiene sincronizzato il blocco note (lista 1=..., 2=..., ...) con le caselle della tabella -->
+  <script>
+    (function () {
+      const entriesContainer = document.getElementById('note-entries');
+      const tableContainer = document.getElementById('table-container');
+
+      if (!entriesContainer || !tableContainer) return;
+
+      // Se modifichiamo il TD programmaticamente, evitiamo che l'osservatore provochi un rebuild immediato
+      let skipNextMutation = false;
+
+      function rebuildNotepad() {
+        if (skipNextMutation) {
+          skipNextMutation = false;
+          return;
+        }
+
+        const tdList = Array.from(tableContainer.querySelectorAll('td'));
+        entriesContainer.innerHTML = '';
+
+        if (tdList.length === 0) {
+          const hint = document.createElement('div');
+          hint.className = 'notepad-empty';
+          hint.textContent = 'La tabella non è ancora generata.';
+          entriesContainer.appendChild(hint);
+          return;
+        }
+
+        tdList.forEach((td, i) => {
+          const idx = i + 1;
+          const entry = document.createElement('div');
+          entry.className = 'note-entry';
+
+          const idxSpan = document.createElement('span');
+          idxSpan.className = 'idx';
+          idxSpan.textContent = idx + '=';
+
+          const input = document.createElement('input');
+          // Inizializziamo l'input con il testo attuale della cella
+          input.value = td.textContent.trim();
+          input.setAttribute('aria-label', `Voce ${idx}`);
+
+          // Quando l'utente modifica il campo nel blocco note, aggiorniamo la corrispondente cella della tabella.
+          // Impostiamo skipNextMutation per evitare rebuild dovuti alla nostra modifica.
+          input.addEventListener('input', () => {
+            skipNextMutation = true;
+            td.textContent = input.value;
+          });
+
+          // Al termine della modifica (blur), se la cella è fissata, facciamo scattare l'handler di blur della td
+          // in modo che vengano eseguite le validazioni già implementate in script.js.
+          input.addEventListener('blur', () => {
+            if (td.classList.contains('fixed')) {
+              const evt = new Event('blur', { bubbles: true });
+              td.dispatchEvent(evt);
+            }
+            // Ricostruisci dopo una breve attesa per riflettere eventuali rollback/validazioni
+            setTimeout(rebuildNotepad, 10);
+          });
+
+          entry.appendChild(idxSpan);
+          entry.appendChild(input);
+          entriesContainer.appendChild(entry);
+        });
+      }
+
+      // Osserviamo table-container per cambiamenti (rigenerazione tabella, testo celle, classi)
+      const observer = new MutationObserver(() => {
+        if (observer._timer) clearTimeout(observer._timer);
+        observer._timer = setTimeout(() => {
+          rebuildNotepad();
+        }, 25);
+      });
+
+      observer.observe(tableContainer, { childList: true, subtree: true, characterData: true, attributes: true });
+
+      // Build iniziale: aspettiamo un tick per permettere a script.js di generare la tabella
+      setTimeout(rebuildNotepad, 50);
+
+      // Funzione esposta per eventuale uso manuale (debug)
+      window._rebuildNotepad = rebuildNotepad;
+    })();
+  </script>
 </body>
 </html>
