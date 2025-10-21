@@ -11,16 +11,29 @@
     <h1>Tabella Generata</h1>
 
     <div class="main-content">
-      <!-- Blocco note posizionato prima del contenitore tabella in modo che sia visualizzato a sinistra -->
+      <!-- Blocco note (sidebar sinistra) -->
       <div id="notepad">
         <h2>Blocco Note</h2>
+        <p class="notepad-subtitle">dai liberamente un nome ad ogni valore</p>
         <div id="note-entries" aria-live="polite"></div>
         <p class="notepad-hint">
-          Modifica il testo accanto ai numeri. Le modifiche vengono applicate alle caselle corrispondenti nella tabella.
+          Usa gli input per assegnare etichette testuali ai numeri mostrati nelle caselle. Le etichette restano solo qui e non modificano i numeri nelle caselle.
         </p>
       </div>
 
+      <!-- Tabella (centro) -->
       <div id="table-container"></div>
+
+      <!-- Istruzioni (destra) -->
+      <div id="instructions">
+        <h3>Istruzioni</h3>
+        <ul>
+          <li>Clicca una volta per bloccare la casella.</li>
+          <li>Clicca due volte per modificare manualmente il numero nella casella.</li>
+          <li>Al terzo click la casella si sblocca.</li>
+          <li>Premi "Genera di nuovo" per riassegnare i numeri alle caselle non bloccate.</li>
+        </ul>
+      </div>
     </div>
 
     <div class="buttons">
@@ -31,27 +44,49 @@
 
   <script src="script.js"></script>
 
-  <!-- Script che mantiene sincronizzato il blocco note (lista 1=..., 2=..., ...) con le caselle della tabella -->
+  <!-- Script che gestisce il Blocco Note come area di etichette (non modifica le caselle) -->
   <script>
     (function () {
       const entriesContainer = document.getElementById('note-entries');
       const tableContainer = document.getElementById('table-container');
+      const STORAGE_KEY = 'noteLabels_v1';
 
       if (!entriesContainer || !tableContainer) return;
 
-      // Se modifichiamo il TD programmaticamente, evitiamo che l'osservatore provochi un rebuild immediato
-      let skipNextMutation = false;
-
-      function rebuildNotepad() {
-        if (skipNextMutation) {
-          skipNextMutation = false;
-          return;
+      // carica etichette da localStorage (oggetto: { "1": "Etichetta 1", "2":"..." })
+      function loadLabels() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          return raw ? JSON.parse(raw) : {};
+        } catch (e) {
+          return {};
         }
+      }
 
+      function saveLabels(labels) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(labels));
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      let noteLabels = loadLabels();
+
+      // Ricostruisce il blocco note: elenca tutti i numeri presenti nelle td (ord. asc.)
+      function rebuildNotepad() {
         const tdList = Array.from(tableContainer.querySelectorAll('td'));
+        // prendi solo valori numerici dalle celle
+        const nums = tdList
+          .map(td => td.textContent.trim())
+          .filter(text => /^\d+$/.test(text))
+          .map(Number);
+
+        const uniqueNums = Array.from(new Set(nums)).sort((a, b) => a - b);
+
         entriesContainer.innerHTML = '';
 
-        if (tdList.length === 0) {
+        if (uniqueNums.length === 0) {
           const hint = document.createElement('div');
           hint.className = 'notepad-empty';
           hint.textContent = 'La tabella non è ancora generata.';
@@ -59,36 +94,22 @@
           return;
         }
 
-        tdList.forEach((td, i) => {
-          const idx = i + 1;
+        uniqueNums.forEach((num) => {
           const entry = document.createElement('div');
           entry.className = 'note-entry';
 
           const idxSpan = document.createElement('span');
           idxSpan.className = 'idx';
-          idxSpan.textContent = idx + '=';
+          idxSpan.textContent = num + '=';
 
           const input = document.createElement('input');
-          // Inizializziamo l'input con il testo attuale della cella
-          input.value = td.textContent.trim();
-          input.setAttribute('aria-label', `Voce ${idx}`);
+          input.value = noteLabels[String(num)] || '';
+          input.setAttribute('aria-label', `Etichetta per ${num}`);
 
-          // Quando l'utente modifica il campo nel blocco note, aggiorniamo la corrispondente cella della tabella.
-          // Impostiamo skipNextMutation per evitare rebuild dovuti alla nostra modifica.
+          // Quando si modifica l'input nel blocco note, salviamo solo l'etichetta in localStorage.
           input.addEventListener('input', () => {
-            skipNextMutation = true;
-            td.textContent = input.value;
-          });
-
-          // Al termine della modifica (blur), se la cella è fissata, facciamo scattare l'handler di blur della td
-          // in modo che vengano eseguite le validazioni già implementate in script.js.
-          input.addEventListener('blur', () => {
-            if (td.classList.contains('fixed')) {
-              const evt = new Event('blur', { bubbles: true });
-              td.dispatchEvent(evt);
-            }
-            // Ricostruisci dopo una breve attesa per riflettere eventuali rollback/validazioni
-            setTimeout(rebuildNotepad, 10);
+            noteLabels[String(num)] = input.value;
+            saveLabels(noteLabels);
           });
 
           entry.appendChild(idxSpan);
@@ -110,8 +131,9 @@
       // Build iniziale: aspettiamo un tick per permettere a script.js di generare la tabella
       setTimeout(rebuildNotepad, 50);
 
-      // Funzione esposta per eventuale uso manuale (debug)
+      // Esponiamo una funzione per debug/uso manuale
       window._rebuildNotepad = rebuildNotepad;
+      window._noteLabels = noteLabels;
     })();
   </script>
 </body>
