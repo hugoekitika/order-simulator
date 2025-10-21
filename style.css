@@ -1,3 +1,4 @@
+/* --- Stili esistenti --- */
 body {
   font-family: Arial, sans-serif;
   text-align: center;
@@ -7,9 +8,13 @@ body {
 }
 
 .container {
-  margin-top: 50px;
+  /* margin-top era presente nel file originale; mantenuto ma resa più completa */
+  max-width: 1200px;
+  margin: 50px auto 0 auto;
+  padding: 20px;
 }
 
+/* Griglia di selezione (home) */
 #grid-selector {
   display: grid;
   grid-template-columns: repeat(10, 30px);
@@ -32,6 +37,7 @@ body {
   background-color: #4caf50;
 }
 
+/* Tabella principale */
 table {
   border-collapse: separate;
   border-spacing: 8px; /* Celle distanziate */
@@ -59,4 +65,96 @@ td:hover {
 td.fixed {
   background-color: #ffd54f;
   box-shadow: inset 0 0 5px #c49a00;
+}
+
+/* --- Stili estratti dal file program.html (Blocco Note e layout) --- */
+
+.main-content {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  /* assicurarsi che il contenuto occupi lo spazio correttamente */
+  justify-content: center;
+}
+
+/* Blocco note (sidebar sinistra) */
+#notepad {
+  width: 260px;
+  min-width: 200px;
+  max-height: 75vh;
+  overflow: auto;
+  border: 1px solid #ccc;
+  padding: 12px;
+  border-radius: 6px;
+  background: #fafafa;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  position: sticky;
+  top: 20px;
+  flex-shrink: 0;
+  text-align: left; /* contenuto del notepad allineato a sinistra */
+}
+
+#notepad h2 {
+  margin: 0 0 8px 0;
+  font-size: 1.05rem;
+}
+
+#note-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.note-entry {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-family: monospace;
+  font-size: 0.95rem;
+}
+
+.note-entry .idx {
+  width: 36px;
+  text-align: right;
+  color: #444;
+}
+
+.note-entry input {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  background: #fff;
+}
+
+/* Suggerimento testuale nel blocco note */
+.notepad-hint {
+  font-size: 0.85rem;
+  color: #666;
+  margin-top: 8px;
+}
+
+/* Messaggio vuoto del blocco note */
+.notepad-empty {
+  color: #666;
+  font-size: 0.95rem;
+}
+
+/* Table container prende lo spazio rimanente */
+#table-container {
+  flex: 1;
+  overflow: auto;
+}
+
+/* Responsive: impila su schermi piccoli */
+@media (max-width: 720px) {
+  .main-content {
+    flex-direction: column;
+  }
+  #notepad {
+    position: static;
+    max-height: none;
+    width: 100%;
+  }
 }
